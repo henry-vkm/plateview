@@ -1,0 +1,217 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+import { createClient } from "@/lib/supabase/client";
+import GoogleButton from "../../../components/googleButton.component";
+
+export default function SignUpPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const handleSignUp = async (event) => {
+    event.preventDefault();
+
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    // Basic Validation
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    /*
+      If email confirmation is OFF:
+      data.session exists → user is logged in immediately.
+
+      If email confirmation is ON:
+      data.user exists but data.session is null.
+    */
+
+    if (data.session) {
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setSuccessMessage(
+      "Account created. Check your email to confirm your account.",
+    );
+
+    setIsLoading(false);
+  };
+
+  return (
+    <main className="min-h-screen bg-[#f7f7f5] px-6 py-10">
+      <div className="mx-auto flex min-h-[calc(100vh-80px)] max-w-md flex-col justify-center">
+        {/* Brand */}
+        <div className="mb-10 text-center">
+          <Link
+            href="/"
+            className="text-2xl font-bold tracking-tight text-gray-950"
+          >
+            PlateView
+          </Link>
+        </div>
+
+        {/* Sign Up Card */}
+        <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-950">
+              Create your account
+            </h1>
+
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              Start building your restaurant&apos;s visual menu.
+            </p>
+          </div>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-sm font-medium text-red-600">{errorMessage}</p>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+              <p className="text-sm font-medium text-green-700">
+                {successMessage}
+              </p>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSignUp} className="mt-8 space-y-5">
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-2 block text-sm font-semibold text-gray-900"
+              >
+                Email
+              </label>
+
+              <input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                onChange={(event) => setEmail(event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-black focus:ring-1 focus:ring-black"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-2 block text-sm font-semibold text-gray-900"
+              >
+                Password
+              </label>
+
+              <input
+                id="password"
+                type="password"
+                placeholder="Create a password"
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-black focus:ring-1 focus:ring-black"
+              />
+
+              <p className="mt-2 text-xs text-gray-400">
+                Use at least 8 characters.
+              </p>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="mb-2 block text-sm font-semibold text-gray-900"
+              >
+                Confirm Password
+              </label>
+
+              <input
+                id="confirmPassword"
+                type="password"
+                placeholder="Enter your password again"
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-black focus:ring-1 focus:ring-black"
+              />
+            </div>
+
+            {/* Create Account */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-xl bg-black px-5 py-4 font-semibold text-white transition hover:bg-gray-800"
+            >
+              {isLoading ? "Creating account..." : "Create Account"}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="my-7 flex items-center gap-4">
+            <div className="h-px flex-1 bg-gray-200" />
+
+            <span className="text-xs font-medium uppercase tracking-wider text-gray-400">
+              or
+            </span>
+
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          {/* Google */}
+          <GoogleButton />
+
+          {/* Sign In */}
+          <p className="mt-7 text-center text-sm text-gray-500">
+            Already have an account?{" "}
+            <Link
+              href="/auth/sign-in"
+              className="font-semibold text-gray-950 hover:underline"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        <p className="mt-6 text-center text-xs leading-5 text-gray-400">
+          By creating an account, you agree to PlateView&apos;s Terms and
+          Privacy Policy.
+        </p>
+      </div>
+    </main>
+  );
+}

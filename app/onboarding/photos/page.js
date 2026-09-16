@@ -124,7 +124,7 @@ export default function DishPhotoPage() {
             </p>
 
             <button
-              onClick={() => router.push("/menu/demo")}
+              onClick={() => router.push("/onboarding/preview")}
               className="mt-8 w-full rounded-xl bg-black px-5 py-4 font-semibold text-white transition hover:bg-gray-800"
             >
               Generate Visual Menu

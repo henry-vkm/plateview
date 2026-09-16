@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useContext } from "react";
+import { UserContext } from "../../context/user.context";
+import SignOutButton from "../../components/signOutButton.component";
 
 export default function DashboardPage() {
+  const { currentUser } = useContext(UserContext);
   const [menuPublished] = useState(false);
 
   const setupSteps = [
@@ -58,9 +61,7 @@ export default function DashboardPage() {
               Help
             </button>
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-sm font-semibold text-white">
-              R
-            </div>
+            <p>{currentUser ? <SignOutButton /> : "Sign In"} </p>
           </div>
         </div>
       </header>
