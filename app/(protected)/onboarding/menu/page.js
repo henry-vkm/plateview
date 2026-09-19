@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
+import { UserContext } from "@/context/user.context";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function MenuUploadPage() {
   const router = useRouter();
+
+  const { currentUser } = useContext(UserContext);
+
+  const [restaurant, setRestaurant] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const [fileName, setFileName] = useState("");
   const [uploaded, setUploaded] = useState(false);
@@ -13,26 +20,132 @@ export default function MenuUploadPage() {
 
   const sampleDishes = [
     {
-      name: "Chicken Teriyaki",
-      category: "Entrees",
-      price: "$16.99",
+      name: "Spicy Chicken",
+      category: "Appetizers",
+      price: 11.99,
     },
     {
       name: "Spicy Ramen",
       category: "Noodles",
-      price: "$14.99",
+      price: 14.99,
     },
     {
       name: "Beef Bulgogi",
       category: "Entrees",
-      price: "$18.99",
+      price: 18.99,
     },
     {
       name: "Garlic Noodles",
       category: "Noodles",
-      price: "$12.99",
+      price: 12.99,
     },
   ];
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const getRestaurant = async () => {
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .single();
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setRestaurant(data);
+    };
+
+    getRestaurant();
+  }, [currentUser]);
+
+  const handleConfirmMenu = async () => {
+    if (!restaurant) return;
+
+    const supabase = createClient();
+
+    try {
+      setSaving(true);
+
+      // 1. Get Unique Categories
+      const categoryNames = [
+        ...new Set(sampleDishes.map((dish) => dish.category)),
+      ];
+
+      // 2. Create category rows
+      const categoryRows = categoryNames.map((categoryName, index) => ({
+        restaurant_id: restaurant.id,
+        name: categoryName,
+        position: index,
+      }));
+
+      // 3. Insert catgories to database
+      const { data: categories, error: categoryError } = await supabase
+        .from("menu_categories")
+        .upsert(categoryRows, {
+          onConflict: "restaurant_id, name",
+        })
+        .select();
+
+      if (categoryError) {
+        console.error("Category Error: ", categoryError);
+
+        throw new Error(categoryError.message);
+      }
+
+      // 4. Create dishes
+      const dishRows = sampleDishes.map((dish, index) => {
+        const category = categories.find((item) => item.name === dish.category);
+
+        return {
+          restaurant_id: restaurant.id,
+          category_id: category?.id ?? null,
+          name: dish.name,
+          description: dish.description ?? null,
+          price: dish.price,
+          position: index,
+        };
+      });
+
+      // 5. Insert dishes
+      const { data: dishes, error: dishError } = await supabase
+        .from("dishes")
+        .upsert(dishRows, {
+          onConflict: "restaurant_id, category_id, name, price",
+        })
+        .select();
+
+      if (dishError) {
+        console.error("Dish Error: ", dishError);
+        throw new Error(dishError.message);
+      }
+
+      // 6. Update onboarding
+      const { error: restaurantError } = await supabase
+        .from("restaurants")
+        .update({
+          onboarding_step: "dish_photos",
+        })
+        .eq("id", restaurant.id);
+
+      if (restaurantError) {
+        console.error("Restaurant Error: ", restaurantError);
+        throw new Error(restaurantError.message);
+      }
+
+      // 7. Move Forward
+      router.push("/onboarding/photos");
+    } catch (error) {
+      console.error("Error saving menu:", error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -220,10 +333,11 @@ export default function MenuUploadPage() {
             </div>
 
             <button
-              onClick={() => router.push("/onboarding/photos")}
+              onClick={handleConfirmMenu}
+              disabled={saving}
               className="mt-8 w-full rounded-xl bg-black px-5 py-4 font-semibold text-white transition hover:bg-gray-800"
             >
-              Looks Good — Continue
+              {saving ? "Saving Menu..." : "Looks Good — Continue"}
             </button>
           </div>
         )}

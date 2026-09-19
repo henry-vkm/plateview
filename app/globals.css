@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -12,6 +13,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
+@theme {
+  --font-body: "DM Sans", sans-serif;
+  --font-display: "Manrope", sans-serif;
+
+  --shadow-card: 0 18px 44px rgba(22, 45, 32, 0.14);
+  --shadow-phone: 0 34px 70px rgba(25, 49, 35, 0.25);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -23,4 +32,74 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* PlateView landing-page components */
+@layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-[1280px] px-5;
+  }
+
+  .primary-button {
+    @apply inline-flex min-h-[50px] items-center justify-center
+      gap-2 rounded-full border border-[#142019] bg-[#142019]
+      px-6 font-bold text-white transition
+      hover:-translate-y-0.5 hover:shadow-card;
+  }
+
+  .secondary-button {
+    @apply inline-flex min-h-[50px] items-center justify-center
+      rounded-full border border-[#142019] px-6 font-bold
+      transition hover:-translate-y-0.5 hover:bg-white;
+  }
+
+  .eyebrow {
+    @apply flex items-center gap-2.5 text-[13px] font-bold
+      uppercase tracking-[.08em]
+      before:h-0.5 before:w-7 before:shrink-0
+      before:bg-[#173e2d] before:content-[''];
+  }
+
+  .section-title {
+    @apply font-display text-4xl font-extrabold
+      leading-[1.05] tracking-[-.04em] sm:text-6xl;
+  }
+
+  .avatar {
+    @apply block size-8 rounded-full border-2 border-[#f4f2ea];
+  }
+
+  .marker {
+    @apply relative z-0 text-[#173e2d]
+      after:absolute after:bottom-1 after:left-[2%]
+      after:right-0 after:-z-10 after:h-3
+      after:-rotate-1 after:bg-[#d9ff5b] after:content-[''];
+  }
+}
+
+.ticker {
+  animation: plateview-ticker 22s linear infinite;
+}
+
+.ticker span {
+  margin-inline: 1.5rem;
+  color: #d9ff5b;
+}
+
+@keyframes plateview-ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker {
+    animation: none;
+  }
+
+  .primary-button,
+  .secondary-button {
+    transition: none;
+    transform: none;
+  }
 }

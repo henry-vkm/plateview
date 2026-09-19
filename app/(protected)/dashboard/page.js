@@ -1,48 +1,119 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useContext } from "react";
-import { UserContext } from "../../context/user.context";
-import SignOutButton from "../../components/signOutButton.component";
+import { useState, useContext, useEffect } from "react";
+import { UserContext } from "../../../context/user.context";
+import SignOutButton from "@/components/signOutButton.component";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DashboardPage() {
   const { currentUser } = useContext(UserContext);
-  const [menuPublished] = useState(false);
+
+  const [restaurant, setRestaurant] = useState(null);
+  const [restaurantLoading, setRestaurantLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setRestaurantLoading(false);
+      return;
+    }
+
+    const getRestaurant = async () => {
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("owner_id", currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error getting restaurant: ", error.message);
+      }
+
+      setRestaurant(data);
+      setRestaurantLoading(false);
+    };
+
+    getRestaurant();
+  }, [currentUser]);
+
+  const stepOrder = {
+    restaurant_details: 0,
+    menu_upload: 1,
+    dish_photos: 2,
+    preview: 3,
+    complete: 4,
+  };
+
+  const currentStep = restaurant
+    ? (stepOrder[restaurant.onboarding_step] ?? 0)
+    : 0;
 
   const setupSteps = [
     {
       id: 1,
       title: "Add restaurant details",
       description: "Add your restaurant name, cuisine, and logo.",
-      completed: false,
+      completed: currentStep > 0,
       href: "/onboarding",
     },
     {
       id: 2,
       title: "Upload your existing menu",
       description: "Let PlateView extract your dishes and prices.",
-      completed: false,
+      completed: currentStep > 1,
       href: "/onboarding/menu",
     },
     {
       id: 3,
       title: "Add dish photos",
       description: "Upload photos so customers can see what they’re ordering.",
-      completed: false,
+      completed: currentStep > 2,
       href: "/onboarding/photos",
     },
     {
       id: 4,
       title: "Publish your visual menu",
       description: "Review your menu and make it available to customers.",
-      completed: false,
-      href: "/menu/demo",
+      completed: restaurant?.onboarding_completed === true,
+      href: "/onboarding/preview",
     },
   ];
 
   const completedSteps = setupSteps.filter((step) => step.completed).length;
 
   const progress = (completedSteps / setupSteps.length) * 100;
+
+  const menuPublished = restaurant?.is_published ?? false;
+
+  const continueSetupHref = !restaurant
+    ? "/onboarding"
+    : restaurant.onboarding_step === "menu_upload"
+      ? "/onboarding/menu"
+      : restaurant.onboarding_step === "dish_photos"
+        ? "/onboarding/photos"
+        : restaurant.onboarding_step === "preview"
+          ? "/onboarding/preview"
+          : "/onboarding";
+
+  if (restaurantLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
+        <div className="text-center">
+          <div className="flex justify-center gap-2">
+            <div className="h-3 w-3 animate-bounce rounded-full bg-black" />
+
+            <div className="h-3 w-3 animate-bounce rounded-full bg-black [animation-delay:150ms]" />
+
+            <div className="h-3 w-3 animate-bounce rounded-full bg-black [animation-delay:300ms]" />
+          </div>
+
+          <p className="mt-5 text-sm text-gray-500">Loading restaurant...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#f7f7f5]">
@@ -133,17 +204,18 @@ export default function DashboardPage() {
                 </p>
 
                 <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-950 sm:text-4xl">
-                  Let&apos;s build your menu
+                  {restaurant ? restaurant.name : "Let's build your menu"}
                 </h1>
 
                 <p className="mt-2 max-w-xl text-gray-500">
-                  Complete your restaurant setup and publish your first visual
-                  menu.
+                  {restaurant
+                    ? restaurant.cuisine
+                    : "Complete your restaurant setup and publish your first visual menu."}
                 </p>
               </div>
 
               <Link
-                href="/onboarding"
+                href={continueSetupHref}
                 className="inline-flex items-center justify-center rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
               >
                 Continue Setup
@@ -163,9 +235,15 @@ export default function DashboardPage() {
                   </h2>
                 </div>
 
-                <span className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-600">
-                  Setup incomplete
-                </span>
+                {restaurant?.onboarding_completed ? (
+                  <span className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
+                    Setup complete
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-600">
+                    Setup incomplete
+                  </span>
+                )}
               </div>
 
               {/* Progress Bar */}

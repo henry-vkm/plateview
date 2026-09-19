@@ -1,24 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useRouter } from "next/navigation";
+
+import { UserContext } from "@/context/user.context";
+import { createClient } from "@/lib/supabase/client";
 
 import Link from "next/link";
 
 export default function OnboardingPage() {
   const router = useRouter();
 
+  const { currentUser } = useContext(UserContext);
+
   const [restaurantName, setRestaurantName] = useState("");
   const [cuisine, setCuisine] = useState("");
   const [logoName, setLogoName] = useState("");
 
-  const handleContinue = (e) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleContinue = async (e) => {
     e.preventDefault();
 
-    if (!restaurantName || !cuisine) return;
+    if (!restaurantName || !cuisine || !currentUser) return;
 
-    // Temporary for now.
-    // Later we'll save this data to Supabase.
+    setIsSaving(true);
+    setErrorMessage("");
+
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("restaurants")
+      .insert({
+        owner_id: currentUser.id,
+        name: restaurantName,
+        cuisine: cuisine,
+        onboarding_step: "menu_upload",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error(error);
+
+      setErrorMessage(error.message);
+      setIsSaving(false);
+
+      return;
+    }
+
+    console.log("Restaurant created: ", data);
     router.push("/onboarding/menu");
   };
 
@@ -160,10 +192,10 @@ export default function OnboardingPage() {
           {/* Continue */}
           <button
             type="submit"
-            disabled={!restaurantName || !cuisine}
+            disabled={!restaurantName || !cuisine || isSaving}
             className="mt-8 w-full rounded-xl bg-black px-5 py-4 text-base font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
-            Continue
+            {isSaving ? "Saving..." : "Continue"}
           </button>
         </form>
 
